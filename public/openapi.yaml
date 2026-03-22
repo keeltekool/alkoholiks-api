@@ -1,0 +1,427 @@
+openapi: "3.1.0"
+info:
+  title: Alkoholiks API
+  description: Real-time Estonian retail drink prices from 5 store chains.
+  version: "1.0.0"
+  contact:
+    name: Alkoholiks API
+    url: https://alkoholiks-api.vercel.app
+servers:
+  - url: https://alkoholiks-api.vercel.app/api
+    description: Production
+  - url: http://localhost:3000/api
+    description: Local development
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: OAuth 2.0 access token obtained via POST /oauth/token
+    OAuth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: /oauth/token
+          scopes: {}
+
+  schemas:
+    Product:
+      type: object
+      properties:
+        store:
+          type: string
+          enum: [selver, prisma, rimi, barbora, cityalko]
+          example: selver
+        id:
+          oneOf:
+            - type: string
+            - type: integer
+          example: 12345
+        name:
+          type: string
+          example: "Saku Originaal 4,7% 0,5l"
+        sku:
+          type: string
+          example: "SKU12345"
+        ean:
+          type: string
+          example: "4740098000001"
+        volume:
+          type: string
+          example: "500 ml"
+        volumeML:
+          type: integer
+          nullable: true
+          example: 500
+        brand:
+          type: string
+          example: "Saku"
+        regularPrice:
+          type: number
+          example: 1.35
+        cardPrice:
+          type: number
+          nullable: true
+          example: 1.19
+        campaignPrice:
+          type: number
+          nullable: true
+          example: null
+        depositPrice:
+          type: number
+          nullable: true
+          example: null
+        unitPrice:
+          type: number
+          nullable: true
+          example: 2.70
+        imageUrl:
+          type: string
+          nullable: true
+        productUrl:
+          type: string
+        alcoholFree:
+          type: boolean
+          example: false
+        onSale:
+          type: boolean
+          example: true
+        drinkType:
+          type: string
+          enum: ["õlu", "siider", "long drink", "kokteil", "energiajook", "muu"]
+          example: "õlu"
+        category:
+          type: string
+        countryOfOrigin:
+          type: string
+          example: "Eesti"
+        description:
+          type: string
+
+    Store:
+      type: object
+      properties:
+        id:
+          type: string
+          example: selver
+        name:
+          type: string
+          example: Selver
+        website:
+          type: string
+          example: "https://www.selver.ee"
+        has_loyalty_pricing:
+          type: boolean
+          example: true
+        product_count:
+          type: integer
+          example: 283
+        last_updated:
+          type: string
+          nullable: true
+          format: date-time
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "õlu"
+        name:
+          type: string
+          example: "Õlu"
+        name_en:
+          type: string
+          example: Beer
+        product_count:
+          type: integer
+          example: 841
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: UNAUTHORIZED
+            message:
+              type: string
+              example: "Missing or invalid Authorization header"
+            docs_url:
+              type: string
+              example: "https://alkoholiks-api.vercel.app/docs/errors#UNAUTHORIZED"
+
+    Meta:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        request_id:
+          type: string
+
+paths:
+  /oauth/token:
+    post:
+      summary: Get access token
+      description: Exchange client credentials for a Bearer access token (1h TTL).
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [grant_type, client_id, client_secret]
+              properties:
+                grant_type:
+                  type: string
+                  enum: [client_credentials]
+                client_id:
+                  type: string
+                  example: alk_cid_abc123
+                client_secret:
+                  type: string
+                  example: alk_sec_xyz789
+          application/json:
+            schema:
+              type: object
+              required: [grant_type, client_id, client_secret]
+              properties:
+                grant_type:
+                  type: string
+                  enum: [client_credentials]
+                client_id:
+                  type: string
+                client_secret:
+                  type: string
+      responses:
+        "200":
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    example: alk_at_abc123def456
+                  token_type:
+                    type: string
+                    example: Bearer
+                  expires_in:
+                    type: integer
+                    example: 3600
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/products:
+    get:
+      summary: List products
+      description: List all products with optional filters.
+      tags: [Products]
+      parameters:
+        - name: store
+          in: query
+          schema:
+            type: string
+          description: "Comma-separated store IDs (e.g., selver,rimi)"
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: "Drink type filter (e.g., õlu, siider)"
+        - name: brand
+          in: query
+          schema:
+            type: string
+          description: Brand name filter
+        - name: country
+          in: query
+          schema:
+            type: string
+          description: Country of origin
+        - name: price_min
+          in: query
+          schema:
+            type: number
+          description: Minimum price
+        - name: price_max
+          in: query
+          schema:
+            type: number
+          description: Maximum price
+        - name: on_sale
+          in: query
+          schema:
+            type: boolean
+          description: Only discounted products
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+          description: Results per page
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Pagination offset
+      responses:
+        "200":
+          description: Product list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/products/search:
+    get:
+      summary: Search products
+      description: Cross-store text search by name and brand.
+      tags: [Products]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query (matches name + brand)
+        - name: store
+          in: query
+          schema:
+            type: string
+          description: Optional store filter
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Optional category filter
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+                  meta:
+                    allOf:
+                      - $ref: "#/components/schemas/Meta"
+                      - type: object
+                        properties:
+                          query:
+                            type: string
+        "400":
+          description: Missing query parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+        "429":
+          description: Rate limit exceeded
+
+  /v1/stores:
+    get:
+      summary: List stores
+      description: List supported stores with metadata, product counts, and cache timestamps.
+      tags: [Stores]
+      responses:
+        "200":
+          description: Store list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Store"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "401":
+          description: Unauthorized
+        "429":
+          description: Rate limit exceeded
+
+  /v1/categories:
+    get:
+      summary: List categories
+      description: List drink categories with product counts.
+      tags: [Categories]
+      responses:
+        "200":
+          description: Category list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Category"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "401":
+          description: Unauthorized
+        "429":
+          description: Rate limit exceeded
