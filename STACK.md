@@ -44,7 +44,7 @@ curl "https://alkoholiks-api.vercel.app/api/cron/refresh" -H "Authorization: Bea
 
 | Issue | Fix |
 |-------|-----|
-| Vercel Hobby plan: max 1 cron/day | Changed from every 4h to daily 6 AM UTC. Trigger manually after deploy. |
-| Clerk dev keys on prod domain | CORS errors in console. Need production Clerk instance for prod use. |
+| Vercel Hobby plan: max 1 cron/day | Daily 6 AM UTC cron + 24h cache TTL. Aligned — no stale data between refreshes. |
+| Clerk dev keys on prod domain | Console warning only ("loaded with development keys"). Works fine — no CORS errors. |
 | Swagger UI peer dep warnings (React 19) | Works fine despite warnings. `swagger-ui-react` hasn't updated peer deps yet. |
 | `next build` warns "middleware deprecated, use proxy" | Next.js 16 deprecation. Works fine for now. |

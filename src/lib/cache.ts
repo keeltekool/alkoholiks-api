@@ -6,7 +6,7 @@ import { fetchRimiProducts } from "./scrapers/rimi";
 import { fetchBarboraProducts } from "./scrapers/barbora";
 import { fetchCityalkoProducts } from "./scrapers/cityalko";
 
-const CACHE_TTL = 6 * 60 * 60; // 6 hours
+const CACHE_TTL = 24 * 60 * 60; // 24 hours (matches daily Vercel cron)
 
 const FETCHERS: Record<StoreId, () => Promise<SelverProduct[]>> = {
   selver: fetchSelverProducts,

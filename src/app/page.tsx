@@ -111,7 +111,7 @@ export default function Home() {
               <div className="text-xs uppercase tracking-widest font-semibold text-on-surface-variant">Retail Chains</div>
             </div>
             <div>
-              <div className="text-4xl font-extrabold text-primary mb-2">Every 4h</div>
+              <div className="text-4xl font-extrabold text-primary mb-2">Daily</div>
               <div className="text-xs uppercase tracking-widest font-semibold text-on-surface-variant">Data Refreshed</div>
             </div>
           </div>
